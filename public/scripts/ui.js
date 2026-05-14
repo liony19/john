@@ -44,51 +44,145 @@ function updateHUD() {
 
 function resetEnemyPosition() {
   const enemy = document.getElementById("enemy");
-  enemy.setAttribute("position", "0 0 -8");
+  if (!enemy) return;
+
+  enemy.object3D.visible = true;
+  enemy.object3D.position.set(0, 0, -5.8);
+  enemy.object3D.rotation.set(0, 0, 0);
+  enemy.setAttribute("visible", "true");
+
+  const modelsRoot = document.getElementById("enemyModelsRoot");
+  if (modelsRoot) {
+    modelsRoot.object3D.visible = true;
+    modelsRoot.object3D.position.set(0, 0, 0);
+    modelsRoot.object3D.rotation.set(0, 0, 0);
+  }
+
+  document.querySelectorAll(".enemy-character-model").forEach((model) => {
+    model.object3D.visible = model.getAttribute("visible") !== false;
+    model.object3D.position.set(0, 0, 0);
+    model.object3D.rotation.set(0, 0, 0);
+  });
 }
+
+
+function syncEnemyWithSelectedDifficulty(options = {}) {
+  const difficulty = typeof getSelectedDifficultyPhase === "function" ? getSelectedDifficultyPhase() : 2;
+  game.difficultyPhase = difficulty;
+
+  if (!game.customMode && !game.running) {
+    game.enemyHitsNeeded = getEnemyHitsNeeded(difficulty);
+  }
+
+  const enemy = document.getElementById("enemy");
+  if (enemy && enemy.components && enemy.components["enemy-ai"] && enemy.components["enemy-ai"].setVariantForPhase) {
+    enemy.components["enemy-ai"].setVariantForPhase(difficulty);
+    if (options.resetPosition !== false) {
+      resetEnemyPosition();
+    }
+  }
+
+  updateHUD();
+}
+
+function setSelectedDifficulty(level) {
+  const difficulty = Math.min(3, Math.max(1, parseInt(level, 10) || 2));
+  if (typeof customDifficultyEl !== "undefined" && customDifficultyEl) {
+    customDifficultyEl.value = String(difficulty);
+  }
+
+  syncEnemyWithSelectedDifficulty({ resetPosition: true });
+
+  if (typeof updateCustomizeMenuDisplay === "function") {
+    updateCustomizeMenuDisplay();
+  }
+
+  if (!game.running) {
+    setResult(`Dificuldade selecionada: ${getDifficultyLabel(difficulty)}.`);
+  }
+}
+
+if (typeof customDifficultyEl !== "undefined" && customDifficultyEl) {
+  customDifficultyEl.addEventListener("change", () => {
+    setSelectedDifficulty(customDifficultyEl.value);
+  });
+}
+
+const enemyOriginalMaterialColors = new WeakMap();
+let enemyFlashTimeoutId = null;
+let enemyHeadFlashTimeoutId = null;
 
 function flashEnemy(color = "#ff4444", duration = 180) {
   const head = document.getElementById("enemyHead");
   if (head) {
-    const oldColor = head.getAttribute("color") || "#f1c27d";
+    const baseHeadColor = head.dataset.baseColor || head.getAttribute("color") || "#f1c27d";
+    head.dataset.baseColor = baseHeadColor;
+
+    if (enemyHeadFlashTimeoutId) {
+      clearTimeout(enemyHeadFlashTimeoutId);
+    }
+
     head.setAttribute("color", color);
-    setTimeout(() => {
-      head.setAttribute("color", oldColor);
+    enemyHeadFlashTimeoutId = setTimeout(() => {
+      head.setAttribute("color", baseHeadColor);
+      enemyHeadFlashTimeoutId = null;
     }, duration);
   }
 
-  const model = document.getElementById("enemyModel");
+  const enemy = document.getElementById("enemy");
+  const model = enemy && enemy.components && enemy.components["enemy-ai"]
+    ? enemy.components["enemy-ai"].getActiveModelEl()
+    : document.querySelector(".enemy-character-model[visible='true']");
   if (!model || !model.object3D) return;
 
   const THREERef = AFRAME.THREE;
   const flashColor = new THREERef.Color(color);
-  const originalColors = [];
+  const flashedMaterials = [];
+
+  if (enemyFlashTimeoutId) {
+    clearTimeout(enemyFlashTimeoutId);
+    enemyFlashTimeoutId = null;
+  }
 
   model.object3D.traverse((node) => {
     if (!node.isMesh || !node.material) return;
+
     const materials = Array.isArray(node.material) ? node.material : [node.material];
     materials.forEach((material) => {
       if (!material.color) return;
-      originalColors.push({ material, color: material.color.clone() });
+
+      if (!enemyOriginalMaterialColors.has(material)) {
+        enemyOriginalMaterialColors.set(material, material.color.clone());
+      }
+
+      flashedMaterials.push(material);
       material.color.copy(flashColor);
+      material.needsUpdate = true;
     });
   });
 
-  setTimeout(() => {
-    originalColors.forEach((item) => item.material.color.copy(item.color));
+  enemyFlashTimeoutId = setTimeout(() => {
+    flashedMaterials.forEach((material) => {
+      const originalColor = enemyOriginalMaterialColors.get(material);
+      if (!originalColor || !material.color) return;
+
+      material.color.copy(originalColor);
+      material.needsUpdate = true;
+    });
+    enemyFlashTimeoutId = null;
   }, duration);
 }
 
 function getPromptLabel(action) {
   switch (action) {
     case "dodgeLeft":
-      return "← DESVIAR";
+      return "DESVIAR À ESQUERDA";
     case "dodgeRight":
-      return "→ DESVIAR";
+      return "DESVIAR À DIREITA";
     case "duck":
-      return "↓ AGACHAR";
+      return "AGACHAR";
     case "attack":
-      return "↑ ATACAR";
+      return "ATACAR";
     default:
       return "...";
   }
