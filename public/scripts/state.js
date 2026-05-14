@@ -727,9 +727,9 @@ const ENEMY_PROFILES = {
     vulnerableClip: "CharacterArmature|HitRecieve",
     attackStyle: "weapon",
     attacks: {
-      left: "CharacterArmature|Punch_Left",
-      right: "CharacterArmature|Sword_Slash",
-      rightOptions: { reverse: false, swordFx: true },
+      right: "CharacterArmature|Punch_Left",
+      left: "CharacterArmature|Sword_Slash",
+      leftOptions: { reverse: false, swordFx: true },
       high: "CharacterArmature|Kick_Right"
     },
     speed: 0.046,
@@ -759,7 +759,7 @@ const ENEMY_PROFILES = {
     attackDistance: 3.45,
     keepDistance: 2.85,
     hitsNeeded: 5,
-    reactionWindow: 1500,
+    reactionWindow: 1200,
     attackCooldown: 720,
     attackDelay: { left: 0, right: 0, high: 0, vulnerable: 0 },
     patternWeights: { vulnerable: 0.14, left: 0.31, right: 0.31, high: 0.24 }
