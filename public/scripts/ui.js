@@ -49,10 +49,33 @@ function resetEnemyPosition() {
 
 function flashEnemy(color = "#ff4444", duration = 180) {
   const head = document.getElementById("enemyHead");
-  const oldColor = head.getAttribute("color") || "#f1c27d";
-  head.setAttribute("color", color);
+  if (head) {
+    const oldColor = head.getAttribute("color") || "#f1c27d";
+    head.setAttribute("color", color);
+    setTimeout(() => {
+      head.setAttribute("color", oldColor);
+    }, duration);
+  }
+
+  const model = document.getElementById("enemyModel");
+  if (!model || !model.object3D) return;
+
+  const THREERef = AFRAME.THREE;
+  const flashColor = new THREERef.Color(color);
+  const originalColors = [];
+
+  model.object3D.traverse((node) => {
+    if (!node.isMesh || !node.material) return;
+    const materials = Array.isArray(node.material) ? node.material : [node.material];
+    materials.forEach((material) => {
+      if (!material.color) return;
+      originalColors.push({ material, color: material.color.clone() });
+      material.color.copy(flashColor);
+    });
+  });
+
   setTimeout(() => {
-    head.setAttribute("color", oldColor);
+    originalColors.forEach((item) => item.material.color.copy(item.color));
   }, duration);
 }
 

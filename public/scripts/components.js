@@ -452,6 +452,7 @@ AFRAME.registerComponent("enemy-ai", {
 
   init: function () {
     this.canAttack = true;
+    this.currentModelClip = null;
 
     this.replayAnimation = (target, animationName, config) => {
       if (!target) return;
@@ -461,10 +462,31 @@ AFRAME.registerComponent("enemy-ai", {
         target.setAttribute(animationName, config);
       });
     };
+
+    this.playModelClip = (clip, loop = "once", clampWhenFinished = true) => {
+      const model = this.el.querySelector("#enemyModel");
+      if (!model) return false;
+      if (this.currentModelClip === clip && loop === "repeat") return true;
+
+      this.currentModelClip = clip;
+      model.removeAttribute("animation-mixer");
+      requestAnimationFrame(() => {
+        model.setAttribute(
+          "animation-mixer",
+          `clip: ${clip}; loop: ${loop}; clampWhenFinished: ${clampWhenFinished}; crossFadeDuration: 0.18`
+        );
+      });
+      return true;
+    };
+
+    this.playIdle = () => {
+      this.playModelClip("CharacterArmature|Idle", "repeat", false);
+    };
   },
 
   resumeCombat: function () {
     this.canAttack = true;
+    this.playIdle();
   },
 
   tick: function () {
@@ -484,6 +506,7 @@ AFRAME.registerComponent("enemy-ai", {
     const distance = enemyPos.distanceTo(playerPos);
 
     if (distance > this.data.attackDistance) {
+      this.playModelClip("CharacterArmature|Run", "repeat", false);
       const direction = new THREE.Vector3();
       direction.subVectors(playerPos, enemyPos).normalize();
       this.el.object3D.position.add(direction.multiplyScalar(this.data.speed));
@@ -524,6 +547,18 @@ AFRAME.registerComponent("enemy-ai", {
   },
 
   swingArm: function (side) {
+    const modelClip = side === "left"
+      ? "CharacterArmature|Punch_Left"
+      : "CharacterArmature|Punch_Right";
+
+    if (this.playModelClip(modelClip, "once", true)) {
+      setTimeout(() => {
+        const expected = side === "left" ? "dodgeRight" : "dodgeLeft";
+        openPrompt(expected);
+      }, 260);
+      return;
+    }
+
     const arm = this.el.querySelector(side === "left" ? "#leftArm" : "#rightArm");
     if (!arm) return;
 
@@ -551,6 +586,13 @@ AFRAME.registerComponent("enemy-ai", {
   },
 
   highAttack: function () {
+    if (this.playModelClip("CharacterArmature|Kick_Right", "once", true)) {
+      setTimeout(() => {
+        openPrompt("duck");
+      }, 300);
+      return;
+    }
+
     const head = this.el.querySelector("#enemyHead");
     if (!head) return;
 
@@ -568,6 +610,13 @@ AFRAME.registerComponent("enemy-ai", {
   },
 
   vulnerableOpen: function () {
+    if (this.playModelClip("CharacterArmature|HitRecieve", "once", true)) {
+      setTimeout(() => {
+        openPrompt("attack");
+      }, 260);
+      return;
+    }
+
     const head = this.el.querySelector("#enemyHead");
     if (!head) return;
 

@@ -7,6 +7,7 @@
 
   <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
   <script src="https://unpkg.com/aframe-environment-component/dist/aframe-environment-component.min.js"></script>
+  <script src="https://unpkg.com/aframe-extras@7.6.0/dist/aframe-extras.min.js"></script>
 
   <link rel="stylesheet" href="style.css" />
 </head>
@@ -85,6 +86,7 @@
         id="battleSound"
         src="https://cdn.pixabay.com/download/audio/2022/03/15/audio_c8c8a73467.mp3">
       </audio>
+      <a-asset-item id="hoodedAdventurerModel" src="models/hooded-adventurer.glb"></a-asset-item>
     </a-assets>
 
     <a-entity
@@ -436,23 +438,33 @@
     </a-entity>
 
     <a-entity id="enemy" position="0 0 -8" enemy-ai sound="src: #battleSound">
-      <a-cylinder position="0 1 0" height="2" radius="0.5" color="#c68642"></a-cylinder>
-      <a-sphere id="enemyHead" position="0 2.3 0" radius="0.5" color="#f1c27d"></a-sphere>
-      <a-sphere position="0 2.5 0" radius="0.55" color="gray"></a-sphere>
+      <a-entity
+        id="enemyModel"
+        gltf-model="#hoodedAdventurerModel"
+        position="0 0 0"
+        rotation="0 180 0"
+        scale="1.15 1.15 1.15"
+        animation-mixer="clip: CharacterArmature|Idle; loop: repeat; crossFadeDuration: 0.2">
+      </a-entity>
 
-      <a-cone position="-0.4 3.0 0" rotation="0 0 60" radius-bottom="0.1" height="0.8" color="white"></a-cone>
-      <a-cone position="0.4 3.0 0" rotation="0 0 -60" radius-bottom="0.1" height="0.8" color="white"></a-cone>
+      <!-- Hitboxes/âncoras invisíveis mantêm a lógica original do jogo. -->
+      <a-cylinder position="0 1 0" height="2" radius="0.5" color="#c68642" visible="false"></a-cylinder>
+      <a-sphere id="enemyHead" position="0 2.3 0" radius="0.5" color="#f1c27d" visible="false"></a-sphere>
+      <a-sphere position="0 2.5 0" radius="0.55" color="gray" visible="false"></a-sphere>
+
+      <a-cone position="-0.4 3.0 0" rotation="0 0 60" radius-bottom="0.1" height="0.8" color="white" visible="false"></a-cone>
+      <a-cone position="0.4 3.0 0" rotation="0 0 -60" radius-bottom="0.1" height="0.8" color="white" visible="false"></a-cone>
 
       <a-entity id="leftArm" position="-0.8 1.4 0" rotation="0 0 30">
-        <a-cylinder radius="0.15" height="1.2" color="#c68642"></a-cylinder>
-        <a-cylinder position="-0.25 -0.6 0" radius="0.05" height="1.2" rotation="0 0 -30" color="#8B4513"></a-cylinder>
-        <a-box position="-0.1 -1.2 0" depth="0.15" height="0.6" width="0.5" rotation="0 0 -30" color="silver"></a-box>
+        <a-cylinder radius="0.15" height="1.2" color="#c68642" visible="false"></a-cylinder>
+        <a-cylinder position="-0.25 -0.6 0" radius="0.05" height="1.2" rotation="0 0 -30" color="#8B4513" visible="false"></a-cylinder>
+        <a-box position="-0.1 -1.2 0" depth="0.15" height="0.6" width="0.5" rotation="0 0 -30" color="silver" visible="false"></a-box>
       </a-entity>
 
       <a-entity id="rightArm" position="0.8 1.4 0" rotation="0 0 -30">
-        <a-cylinder radius="0.15" height="1.2" color="#c68642"></a-cylinder>
-        <a-cylinder position="0.25 -0.6 0" radius="0.05" height="1.2" rotation="0 0 30" color="#8B4513"></a-cylinder>
-        <a-box position="0.1 -1.2 0" depth="0.15" height="0.6" width="0.5" rotation="0 0 30" color="silver"></a-box>
+        <a-cylinder radius="0.15" height="1.2" color="#c68642" visible="false"></a-cylinder>
+        <a-cylinder position="0.25 -0.6 0" radius="0.05" height="1.2" rotation="0 0 30" color="#8B4513" visible="false"></a-cylinder>
+        <a-box position="0.1 -1.2 0" depth="0.15" height="0.6" width="0.5" rotation="0 0 30" color="silver" visible="false"></a-box>
       </a-entity>
     </a-entity>
 
