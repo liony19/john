@@ -492,6 +492,12 @@
         <a-cylinder position="0 0 -0.18" radius="0.045" height="1.15" rotation="90 0 0" color="#7B2CBF" opacity="0.56" material="shader: flat; transparent: true"></a-cylinder>
       </a-entity>
 
+      <a-entity id="highMagicFx" visible="false" position="0 2.25 0.68" scale="0.2 0.2 0.2">
+        <a-plane width="1.75" height="0.12" color="#E9B8FF" opacity="0.9" material="shader: flat; transparent: true; side: double"></a-plane>
+        <a-plane position="0 0 0.018" width="1.25" height="0.035" color="#FFFFFF" opacity="0.92" material="shader: flat; transparent: true; side: double"></a-plane>
+        <a-torus position="0 0 0.035" radius="0.52" radius-tubular="0.012" rotation="0 90 0" color="#B85CFF" opacity="0.55" material="shader: flat; transparent: true"></a-torus>
+      </a-entity>
+
       <!-- Hitboxes/âncoras invisíveis mantêm a lógica original do jogo. -->
       <a-cylinder position="0 1 0" height="2" radius="0.5" color="#c68642" visible="false"></a-cylinder>
       <a-sphere id="enemyHead" position="0 2.3 0" radius="0.5" color="#f1c27d" visible="false"></a-sphere>

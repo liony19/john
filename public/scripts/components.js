@@ -463,6 +463,7 @@ AFRAME.registerComponent("enemy-ai", {
     this.modelEl = this.modelEls.king;
     this.swordSlashFx = this.el.querySelector("#swordSlashFx");
     this.magicFx = this.el.querySelector("#magicFx");
+    this.highMagicFx = this.el.querySelector("#highMagicFx");
     this.swordSlashFxTimeout = null;
     this.swordSlashFxRaf = null;
     this.magicFxTimeout = null;
@@ -491,6 +492,7 @@ AFRAME.registerComponent("enemy-ai", {
       this.magicFxRaf = null;
       if (this.swordSlashFx) this.swordSlashFx.setAttribute("visible", "false");
       if (this.magicFx) this.magicFx.setAttribute("visible", "false");
+      if (this.highMagicFx) this.highMagicFx.setAttribute("visible", "false");
     };
 
     this.resetActionState = () => {
@@ -822,11 +824,15 @@ AFRAME.registerComponent("enemy-ai", {
   },
 
   playMagicFx: function (pattern) {
-    const fx = this.magicFx || this.el.querySelector("#magicFx");
+    const normalFx = this.magicFx || this.el.querySelector("#magicFx");
+    const highFx = this.highMagicFx || this.el.querySelector("#highMagicFx");
+    const fx = pattern === "high" && highFx ? highFx : normalFx;
     if (!fx) return;
 
     if (this.magicFxTimeout) clearTimeout(this.magicFxTimeout);
     if (this.magicFxRaf) cancelAnimationFrame(this.magicFxRaf);
+    if (normalFx) normalFx.setAttribute("visible", "false");
+    if (highFx) highFx.setAttribute("visible", "false");
 
     const setFxOpacity = (opacity) => {
       fx.object3D.traverse((node) => {
@@ -845,21 +851,23 @@ AFRAME.registerComponent("enemy-ai", {
       // energia à esquerda do jogador => desvie para a direita; energia à direita => desvie para a esquerda.
       left: new THREE.Vector3(-0.95, 1.82, 0.72),
       right: new THREE.Vector3(0.95, 1.82, 0.72),
-      high: new THREE.Vector3(0, 2.55, 0.72)
+      // Ataque alto: a magia passa por cima da cabeça, em linha horizontal, para pedir AGACHAR.
+      high: new THREE.Vector3(0, 2.34, 0.52)
     };
     const endMap = {
       left: new THREE.Vector3(-0.34, 1.48, 2.12),
       right: new THREE.Vector3(0.34, 1.48, 2.12),
-      high: new THREE.Vector3(0, 1.02, 2.12)
+      high: new THREE.Vector3(0, 2.08, 2.35)
     };
 
     const startPos = startMap[pattern] || startMap.high;
     const endPos = endMap[pattern] || endMap.high;
     const startedAt = performance.now();
-    const duration = 460;
+    const duration = pattern === "high" ? 520 : 460;
 
     fx.setAttribute("visible", "true");
     fx.object3D.position.copy(startPos);
+    fx.object3D.rotation.set(0, 0, pattern === "high" ? 0 : fx.object3D.rotation.z);
     fx.object3D.scale.set(0.18, 0.18, 0.18);
     setFxOpacity(0.9);
 
@@ -868,8 +876,13 @@ AFRAME.registerComponent("enemy-ai", {
       const ease = 1 - Math.pow(1 - t, 3);
       const pulse = 1 + Math.sin(t * Math.PI * 4) * 0.12;
       fx.object3D.position.lerpVectors(startPos, endPos, ease);
-      fx.object3D.scale.setScalar((0.18 + 0.62 * ease) * pulse);
-      fx.object3D.rotation.y += 0.18;
+      if (pattern === "high") {
+        fx.object3D.scale.set(0.42 + 0.42 * ease, 0.42 + 0.16 * ease, 0.42 + 0.22 * ease);
+        fx.object3D.rotation.z = Math.sin(t * Math.PI * 3) * 0.06;
+      } else {
+        fx.object3D.scale.setScalar((0.18 + 0.62 * ease) * pulse);
+        fx.object3D.rotation.y += 0.18;
+      }
       setFxOpacity(Math.max(0, 0.9 * (1 - t * 0.86)));
 
       if (t < 1) {

@@ -704,9 +704,8 @@ const ENEMY_PROFILES = {
     vulnerableClip: "CharacterArmature|HitRecieve_2",
     attackStyle: "brawler",
     attacks: {
-      left: "CharacterArmature|Punch_Left",
-      right: "CharacterArmature|Punch_Right",
-      high: "CharacterArmature|Punch_Right"
+      high: "CharacterArmature|Punch_Left",
+      left: "CharacterArmature|Punch_Right"
     },
     speed: 0.022,
     attackDistance: 2.2,
