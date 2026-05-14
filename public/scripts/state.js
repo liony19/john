@@ -5,6 +5,8 @@ const hitsEl = document.getElementById("hudHits");
 const missesEl = document.getElementById("hudMisses");
 const avgReactionEl = document.getElementById("hudAvgReaction");
 const promptEl = document.getElementById("hudPrompt");
+const enemyHpFillEl = document.getElementById("enemyHpFill");
+const enemyHpTextEl = document.getElementById("enemyHpText");
 const resultEl = document.getElementById("hudResult");
 const resultBgEl = document.getElementById("hudResultBg");
 const promptBgEl = document.getElementById("hudPromptBg");
@@ -704,16 +706,24 @@ const ENEMY_PROFILES = {
     vulnerableClip: "CharacterArmature|HitRecieve_2",
     attackStyle: "brawler",
     attacks: {
-      high: "CharacterArmature|Punch_Left",
-      left: "CharacterArmature|Punch_Right"
+      left: "CharacterArmature|Punch_Right",
+      right: "CharacterArmature|Punch_Left",
+      high: "CharacterArmature|Punch_Left"
     },
-    speed: 0.022,
-    attackDistance: 2.2,
+    windupClips: {
+      left: "CharacterArmature|Punch_Right",
+      right: "CharacterArmature|Punch_Left",
+      high: "CharacterArmature|Punch_Left"
+    },
+    windupOptions: { timeScale: 0.23 },
+    windupMs: 900,
+    speed: 0.017,
+    attackDistance: 2.25,
     hitsNeeded: 3,
-    reactionWindow: 2700,
-    attackCooldown: 980,
+    reactionWindow: 3600,
+    attackCooldown: 1250,
     attackDelay: { left: 0, right: 0, high: 0, vulnerable: 0 },
-    patternWeights: { vulnerable: 0.42, left: 0.28, right: 0.22, high: 0.08 }
+    patternWeights: { vulnerable: 0.52, left: 0.20, right: 0.18, high: 0.10 }
   },
   2: {
     key: "adventurer",

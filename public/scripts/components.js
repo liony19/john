@@ -472,6 +472,7 @@ AFRAME.registerComponent("enemy-ai", {
     this.modelActionsByEl = new WeakMap();
     this.currentAction = null;
     this.pendingIdleTimeout = null;
+    this.pendingAttackTimeout = null;
     this.currentPhaseModel = 1;
 
     this.getActiveProfile = () => {
@@ -504,6 +505,10 @@ AFRAME.registerComponent("enemy-ai", {
       if (this.pendingIdleTimeout) {
         clearTimeout(this.pendingIdleTimeout);
         this.pendingIdleTimeout = null;
+      }
+      if (this.pendingAttackTimeout) {
+        clearTimeout(this.pendingAttackTimeout);
+        this.pendingAttackTimeout = null;
       }
     };
 
@@ -598,6 +603,7 @@ AFRAME.registerComponent("enemy-ai", {
         const entry = actions.get(clip);
         const action = entry.action;
         const shouldReverse = Boolean(options.reverse);
+        const customTimeScale = Number.isFinite(Number(options.timeScale)) ? Math.max(0.05, Math.abs(Number(options.timeScale))) : 1;
 
         if (this.currentAction && this.currentAction !== action) {
           this.currentAction.fadeOut(0.08);
@@ -607,7 +613,7 @@ AFRAME.registerComponent("enemy-ai", {
         action.enabled = true;
         action.clampWhenFinished = clampWhenFinished;
         action.setLoop(loop === "repeat" ? THREE.LoopRepeat : THREE.LoopOnce, loop === "repeat" ? Infinity : 1);
-        action.timeScale = shouldReverse ? -1 : 1;
+        action.timeScale = shouldReverse ? -customTimeScale : customTimeScale;
         action.time = shouldReverse ? entry.clip.duration : 0;
         action.fadeIn(this.currentAction && this.currentAction !== action ? 0.08 : 0);
         action.play();
@@ -930,10 +936,31 @@ AFRAME.registerComponent("enemy-ai", {
     const clip = clips[pattern] || "CharacterArmature|Punch_Right";
     const options = clips[`${pattern}Options`] || {};
     const usesSwordFx = Boolean(options.swordFx);
+    const windupMs = profile && profile.windupMs ? Number(profile.windupMs) : 0;
+    const windupClips = profile && profile.windupClips ? profile.windupClips : null;
+    const windupClip = windupClips && windupClips[pattern]
+      ? windupClips[pattern]
+      : (profile && profile.windupClip ? profile.windupClip : null);
 
-    // A janela abre junto com o início do golpe. Assim o jogador pode desviar antecipadamente,
-    // sem esperar uma instrução específica aparecer depois da animação.
+    // A janela abre assim que o movimento começa. No Rei, primeiro vem um wind-up lento e claro;
+    // se o jogador ler o golpe cedo, ele já pode desviar antes do soco sair.
     this.openDefenseWindow(pattern, "attack");
+
+    if (windupMs > 0 && windupClip) {
+      const windupOptions = profile.windupOptions || { timeScale: 0.45 };
+      this.playModelClip(windupClip, "once", true, windupOptions);
+
+      this.pendingAttackTimeout = setTimeout(() => {
+        this.pendingAttackTimeout = null;
+        if (!game.running || this.isDefeated) return;
+        if (this.playModelClip(clip, "once", true, options) && usesSwordFx) {
+          this.playSwordSlashFx();
+        }
+      }, windupMs);
+
+      this.scheduleIdleReturn(windupMs + 920);
+      return;
+    }
 
     if (this.playModelClip(clip, "once", true, options)) {
       if (usesSwordFx) this.playSwordSlashFx();
