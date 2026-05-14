@@ -12,3 +12,7 @@ services:
         value: 0.0.0.0
       - key: CORS_ORIGIN
         value: "*"
+      - key: USE_SUPABASE
+        value: false
+      - key: HISTORY_LIMIT
+        value: 100

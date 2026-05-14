@@ -33,7 +33,7 @@ Durante as partidas, o jogo registra métricas como:
 - desempenho por fase;
 - histórico das últimas partidas.
 
-Essas informações são salvas no arquivo `db.json` e exibidas no menu de histórico.
+Essas informações podem ser salvas no `db.json` local ou em um banco **Supabase/PostgreSQL** quando `USE_SUPABASE=true`. O menu de histórico continua usando as mesmas rotas da API.
 
 <hr>
 
@@ -56,7 +56,8 @@ Essa abordagem não usa machine learning ainda, mas já funciona como um assiste
 - **A-Frame 1.5.0** para a cena VR/WebXR;
 - **aframe-environment-component** para ambiente 3D;
 - **JavaScript puro** no front-end;
-- **JSON local (`db.json`)** para histórico de desempenho.
+- **JSON local (`db.json`)** como fallback de desenvolvimento;
+- **Supabase/PostgreSQL** para histórico em produção.
 
 <hr>
 
@@ -127,14 +128,31 @@ Depois acesse:
 http://localhost:3000
 ```
 
+### Banco de dados com Supabase/PostgreSQL
+
+O projeto já vem preparado para usar Supabase. O navegador continua acessando as rotas do servidor, por exemplo `/api/history`; somente o `server.js` conversa com o banco.
+
+1. Crie um projeto no Supabase.
+2. Abra **SQL Editor**.
+3. Execute o conteúdo do arquivo `supabase-schema.sql`.
+4. No Render, configure as variáveis:
+
+```text
+USE_SUPABASE=true
+SUPABASE_URL=https://SEU-PROJETO.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=sua_service_role_key
+HISTORY_LIMIT=100
+```
+
+> Atenção: a `SUPABASE_SERVICE_ROLE_KEY` deve ficar apenas no servidor/Render. Nunca coloque essa chave em arquivos públicos do front-end.
+
+A rota `/api/health` mostra se o servidor está usando `supabase` ou `json`.
+
 ### Persistência em produção
 
-Por padrão, o histórico fica em `db.json`. Em hospedagens gratuitas, esse arquivo pode ser apagado quando o serviço reiniciar.
+Com Supabase ativado, o histórico fica no PostgreSQL e não depende mais do arquivo local. Sem Supabase, o projeto usa `db.json` como fallback. Em hospedagens gratuitas, arquivos locais podem ser apagados quando o serviço reiniciar.
 
-Para produção real, use uma destas opções:
-
-- disco persistente e variável `DB_PATH`, por exemplo `/data/db.json`;
-- banco externo como PostgreSQL, MongoDB ou Firebase.
+Para produção real, recomenda-se usar Supabase/PostgreSQL. Como alternativa temporária, use disco persistente e variável `DB_PATH`, por exemplo `/data/db.json`.
 
 <hr>
 
@@ -142,6 +160,8 @@ Para produção real, use uma destas opções:
 
 ```text
 server.js
+database.js
+supabase-schema.sql
 package.json
 db.json
 public/
@@ -160,8 +180,8 @@ public/
 
 - integrar visão computacional real com câmera;
 - substituir o assistente por modelo de IA/ML;
-- salvar usuários separados;
-- usar banco externo em produção;
+- criar login e salvar usuários separados;
+- criar ranking global usando Supabase;
 - adicionar ranking e estatísticas por sessão;
 - melhorar calibração VR inicial.
 

@@ -1,45 +1,22 @@
 const http = require("http");
 const fs = require("fs");
 const path = require("path");
+const {
+  DB_PATH,
+  ensureLocalDbFile,
+  getDatabaseStatus,
+  getHistory,
+  saveHistory,
+  replaceHistory
+} = require("./database");
 
 const PORT = Number(process.env.PORT) || 3000;
 const HOST = process.env.HOST || "0.0.0.0";
 const ROOT_DIR = __dirname;
 const PUBLIC_DIR = path.join(ROOT_DIR, "public");
-const DB_PATH = process.env.DB_PATH ? path.resolve(process.env.DB_PATH) : path.join(ROOT_DIR, "db.json");
 const CORS_ORIGIN = process.env.CORS_ORIGIN || "*";
 const HISTORY_LIMIT = 12;
 const ACTION_TYPES = ["attack", "dodgeLeft", "dodgeRight", "duck"];
-
-function readDb() {
-  try {
-    const raw = fs.readFileSync(DB_PATH, "utf8");
-    const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed.users)) parsed.users = [];
-    if (!Array.isArray(parsed.performanceHistory)) parsed.performanceHistory = [];
-    return parsed;
-  } catch (error) {
-    return { users: [], performanceHistory: [] };
-  }
-}
-
-function ensureDbFile() {
-  const dbDir = path.dirname(DB_PATH);
-  if (!fs.existsSync(dbDir)) {
-    fs.mkdirSync(dbDir, { recursive: true });
-  }
-
-  if (!fs.existsSync(DB_PATH)) {
-    fs.writeFileSync(DB_PATH, `${JSON.stringify({ users: [], performanceHistory: [] }, null, 2)}
-`, "utf8");
-  }
-}
-
-function writeDb(db) {
-  ensureDbFile();
-  fs.writeFileSync(DB_PATH, `${JSON.stringify(db, null, 2)}
-`, "utf8");
-}
 
 function getBaseHeaders(extraHeaders = {}) {
   return {
@@ -433,14 +410,14 @@ function collectRequestBody(req) {
   });
 }
 
-function handleHistoryGet(res) {
-  const db = readDb();
-  sendJson(res, 200, db.performanceHistory.map((item) => normalizeHistoryItem(item)).filter(Boolean));
+async function handleHistoryGet(res) {
+  const entries = await getHistory();
+  sendJson(res, 200, entries.map((item) => normalizeHistoryItem(item)).filter(Boolean));
 }
 
-function handleHistoryInsightsGet(res) {
-  const db = readDb();
-  const normalizedEntries = db.performanceHistory.map((item) => normalizeHistoryItem(item)).filter(Boolean);
+async function handleHistoryInsightsGet(res) {
+  const entries = await getHistory();
+  const normalizedEntries = entries.map((item) => normalizeHistoryItem(item)).filter(Boolean);
   sendJson(res, 200, buildHistoryInsights(normalizedEntries));
 }
 
@@ -453,21 +430,17 @@ async function handleHistoryPost(req, res) {
     return;
   }
 
-  const db = readDb();
-  db.performanceHistory = [entry, ...db.performanceHistory.map((item) => normalizeHistoryItem(item)).filter(Boolean)]
-    .slice(0, HISTORY_LIMIT);
-  writeDb(db);
-  sendJson(res, 201, entry);
+  const savedEntry = await saveHistory(entry);
+  sendJson(res, 201, normalizeHistoryItem(savedEntry) || entry);
 }
 
 async function handleHistoryImport(req, res) {
   const body = await collectRequestBody(req);
   const entries = Array.isArray(body.entries) ? body.entries : [];
 
-  const db = readDb();
-  db.performanceHistory = entries.map((item) => normalizeHistoryItem(item)).filter(Boolean).slice(0, HISTORY_LIMIT);
-  writeDb(db);
-  sendJson(res, 200, db.performanceHistory);
+  const normalizedEntries = entries.map((item) => normalizeHistoryItem(item)).filter(Boolean).slice(0, HISTORY_LIMIT);
+  const savedEntries = await replaceHistory(normalizedEntries);
+  sendJson(res, 200, savedEntries.map((item) => normalizeHistoryItem(item)).filter(Boolean));
 }
 
 function serveStaticFile(res, filePath) {
@@ -489,17 +462,29 @@ const server = http.createServer((req, res) => {
   }
 
   if (requestUrl.pathname === "/api/health" && (req.method === "GET" || req.method === "HEAD")) {
-    sendJson(res, 200, { ok: true, service: "headbutt-berserker", timestamp: new Date().toISOString() });
+    getDatabaseStatus()
+      .then((database) => sendJson(res, 200, {
+        ok: true,
+        service: "headbutt-berserker",
+        timestamp: new Date().toISOString(),
+        database
+      }))
+      .catch((error) => sendJson(res, 200, {
+        ok: true,
+        service: "headbutt-berserker",
+        timestamp: new Date().toISOString(),
+        database: { connected: false, error: error.message }
+      }));
     return;
   }
 
   if (requestUrl.pathname === "/api/history" && req.method === "GET") {
-    handleHistoryGet(res);
+    handleHistoryGet(res).catch((error) => sendJson(res, 500, { error: error.message }));
     return;
   }
 
   if (requestUrl.pathname === "/api/history/insights" && req.method === "GET") {
-    handleHistoryInsightsGet(res);
+    handleHistoryInsightsGet(res).catch((error) => sendJson(res, 500, { error: error.message }));
     return;
   }
 
@@ -543,7 +528,8 @@ const server = http.createServer((req, res) => {
 });
 
 server.listen(PORT, HOST, () => {
-  ensureDbFile();
+  ensureLocalDbFile();
   console.log(`Headbutt Berserker server running at http://${HOST}:${PORT}`);
-  console.log(`Database path: ${DB_PATH}`);
+  console.log(`Database fallback path: ${DB_PATH}`);
+  console.log(`Database provider: ${process.env.USE_SUPABASE === "true" ? "Supabase/PostgreSQL" : "db.json"}`);
 });
