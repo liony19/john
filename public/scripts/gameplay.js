@@ -11,6 +11,12 @@ function openPrompt(action, options = {}) {
   setPromptState(true);
   setResult(resultText);
 
+  // store pending attack SFX so we can play hit SFX if the player is struck
+  game.pendingAttackSfx = {
+    swing: options.attackSfxSwing || null,
+    hit: options.attackSfxHit || null
+  };
+
   game.reactionTimeoutId = setTimeout(() => {
     handleTimeout();
   }, getReactionWindow(getActiveDifficultyPhase()));
@@ -39,9 +45,19 @@ function handleTimeout() {
     }
     flashEnemy("#ff0000");
     setResult("Tempo esgotado. Você foi atingido.", "error");
+    // play hit sfx if provided by the attacker
+    try {
+      if (game.pendingAttackSfx && game.pendingAttackSfx.hit) {
+        playSfx(game.pendingAttackSfx.hit);
+      }
+    } catch (e) {
+      console.warn('play hit sfx failed', e);
+    }
   }
 
   updateHUD();
+  // clear pending attack sfx (handled on timeout/hit)
+  try { game.pendingAttackSfx = null; } catch (e) {}
   checkGameStateOrContinue();
 }
 
@@ -83,12 +99,23 @@ function receiveAction(action, source = "unknown") {
         game.lives--;
       }
       flashEnemy("#ff0000");
+      // play hit sfx when player responded incorrectly
+      try {
+        if (game.pendingAttackSfx && game.pendingAttackSfx.hit) {
+          playSfx(game.pendingAttackSfx.hit);
+        }
+      } catch (e) {
+        console.warn('play hit sfx failed', e);
+      }
       setResult(`Resposta errada via ${source}. Você foi atingido.`, "error");
     }
   }
 
-  updateHUD();
-  checkGameStateOrContinue();
+  // clear pending sfx after resolving hit/timeout
+  try { game.pendingAttackSfx = null; } catch (e) {}
+
+   updateHUD();
+   checkGameStateOrContinue();
 }
 
 function nextPhase() {
@@ -152,6 +179,22 @@ function advanceToNextPhaseAfterDeath() {
 
 function checkGameStateOrContinue() {
   if (!isInfinite(game.lives) && game.lives <= 0) {
+    // play enemy win sfx for current enemy
+    try {
+      const phase = getActiveDifficultyPhase();
+      const profile = typeof getEnemyProfile === 'function' ? getEnemyProfile(phase) : null;
+      const key = profile && profile.key ? profile.key : null;
+      let winId = null;
+      if (key === 'king') winId = 'king-win';
+      else if (key === 'adventurer') winId = 'adventure-win';
+      else if (key === 'witch') winId = 'witch-win';
+      if (winId) {
+        playSfx(winId);
+      }
+    } catch (e) {
+      console.warn('play enemy win sfx failed', e);
+    }
+
     summarizePhase("derrota");
     game.running = false;
     setRoundControlsVisibility(false);
@@ -195,6 +238,7 @@ function startGame() {
   game.phase = settings.phase;
   game.maxPhases = settings.maxPhases;
   game.lives = settings.lives;
+  game.maxLives = settings.lives;
   game.hits = 0;
   game.misses = 0;
   game.reactionTimes = [];
@@ -242,6 +286,7 @@ function resetGame() {
   game.phase = 1;
   game.maxPhases = 3;
   game.lives = 3;
+  game.maxLives = 3;
   game.hits = 0;
   game.misses = 0;
   game.reactionTimes = [];
@@ -269,12 +314,27 @@ function resetGame() {
 }
 
 function dispatchAction(action, source = "unknown") {
+  const activeProfile = typeof getEnemyProfile === "function" ? getEnemyProfile(getActiveDifficultyPhase()) : null;
+  if (action === "duck" && activeProfile && activeProfile.key === "king") {
+    setResult("Contra o Rei, use esquiva lateral ou ataque.");
+    return;
+  }
+
   try {
     if (source === "teclado" && window.animateKeyboardCamera) {
       window.animateKeyboardCamera(action);
     }
   } catch (e) {
     console.warn("animateKeyboardCamera failed", e);
+  }
+
+  // play headbutt sound whenever player attacks
+  try {
+    if (action === 'attack') {
+      playSfx('headbutt');
+    }
+  } catch (e) {
+    console.warn('play headbutt failed', e);
   }
 
   receiveAction(action, source);
